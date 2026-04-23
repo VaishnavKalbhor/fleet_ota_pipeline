@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+*.egg-info/
+.env
+.DS_Store
+node_modules/
+*.log
+.idea/
+.vscode/
+dist/
+build/
+.coverage
+htmlcov/
+sbom*.json
