@@ -25,3 +25,22 @@ has something to forward to.
 This is a genuinely common first-Docker-container mistake, not a
 manufactured one -- worth documenting because it looks like nothing is wrong
 (no error, no crash) right up until you try to actually use the thing.
+
+## Mistake 2: 5% rollout wave updated zero vehicles
+
+**Commit that introduced it:** `Add toy rollout percentage math experiment`
+**Commit that fixed it:** `Fix wave math: force at least 1 vehicle when percentage > 0`
+
+`wave_size(10, 0.05)` computed `int(10 * 0.05) == int(0.5) == 0`. Ran the
+script directly and saw it print "5% wave -> 0 vehicles" -- the canary wave,
+the whole point of staged rollout, would never actually start.
+
+**Fix:** if the requested percentage is greater than zero, force at least 1
+vehicle (`max(1, calculated)`). Added `rollout-controller/tests/test_wave_math.py`
+to lock this in before it becomes load-bearing in the real rollout
+controller (Week 6).
+
+This is arguably the single most "interview-worthy" bug in the whole
+project -- it's an integer-truncation edge case that only shows up at
+specific fleet sizes, and it silently breaks the safety mechanism (canary
+before wide rollout) that the whole staged-rollout design exists for.

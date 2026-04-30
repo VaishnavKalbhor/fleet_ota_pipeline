@@ -1,11 +1,18 @@
 """
 Toy experiment: given a fleet size and a rollout percentage, how many
 vehicles should get the update in this wave?
+
+v1 of this used plain int(fleet_size * percentage), which meant a 5% wave
+against a 10-vehicle fleet computed int(0.5) == 0 -- the canary wave would
+update nobody. See docs/mistakes-log.md.
 """
 
 
 def wave_size(fleet_size: int, percentage: float) -> int:
-    return int(fleet_size * percentage)
+    calculated = int(fleet_size * percentage)
+    if percentage > 0:
+        return max(1, calculated)
+    return calculated
 
 
 if __name__ == "__main__":
