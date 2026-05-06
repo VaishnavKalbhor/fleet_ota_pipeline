@@ -44,3 +44,25 @@ This is arguably the single most "interview-worthy" bug in the whole
 project -- it's an integer-truncation edge case that only shows up at
 specific fleet sizes, and it silently breaks the safety mechanism (canary
 before wide rollout) that the whole staged-rollout design exists for.
+
+## Mistake 3: Error rate calculated against the whole fleet, not the updated vehicles
+
+**Commit that introduced it:** `Add toy telemetry error-threshold experiment`
+**Commit that fixed it:** `Fix error-rate calculation: divide by updated vehicles, not total fleet`
+
+v1 computed `crashes / total_fleet`. In a canary wave (say 1 of 10 vehicles
+updated), if that one vehicle crashes, `1/10 = 10%` -- under the 20%
+threshold, so `should_rollback` returned `False` even though the real
+picture is "the only vehicle we updated crashed."
+
+**Fix:** filter to vehicles that have actually received the update first,
+then divide crashes by *that* count. `1 crash / 1 updated = 100%`, correctly
+above threshold. Added `rollout-controller/tests/test_error_threshold.py`
+(4 tests) covering the canary-crash, healthy-canary, nothing-updated-yet,
+and larger-wave cases.
+
+This is the one the plan singles out as "very relevant to safety-critical
+staged deployment," and it's right -- getting this backwards makes a
+canary wave actively dangerous: the safety mechanism looks calm precisely
+because most of the fleet hasn't been touched yet, which is the opposite of
+what it should signal.
