@@ -66,3 +66,31 @@ staged deployment," and it's right -- getting this backwards makes a
 canary wave actively dangerous: the safety mechanism looks calm precisely
 because most of the fleet hasn't been touched yet, which is the opposite of
 what it should signal.
+
+## Mistake 4: SBOM generated in CI but never uploaded anywhere
+
+**Commit that introduced it:** `Add security scanning workflow: Semgrep, Trivy, SBOM generation`
+**Commit that fixed it:** `Upload SBOM as a downloadable build artifact`
+
+The `sbom` job in `security.yml` ran Syft against the built image and wrote
+`sbom.spdx.json` inside the runner's workspace, then... stopped. GitHub
+Actions runners are ephemeral -- anything written to disk during a job and
+not explicitly published (as an artifact, a release asset, a registry
+attachment, etc.) simply disappears when the runner is torn down at the
+end of the job. The job went green every time, which made this an easy
+one to miss: "SBOM generation succeeded" and "the SBOM is actually
+available to anyone" are two different claims, and the workflow only
+proved the first one.
+
+**Fix:** added an `actions/upload-artifact@v4` step right after the Syft
+step, uploading `sbom.spdx.json` with a 90-day retention window. Now the
+SBOM shows up as a downloadable artifact on the workflow run summary --
+which is the whole point of generating one in the first place (traceable,
+inspectable dependency inventory per build).
+
+This one doesn't need a live GitHub Actions run to verify: it's a
+structural fact about the YAML. A `run:`/action step that writes a file
+and is never followed by an upload/publish step for that file has no way
+for the artifact to leave the runner, regardless of whether the step
+itself succeeds. Caught this by re-reading the workflow the way a
+reviewer would, rather than by running it.

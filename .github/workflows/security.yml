@@ -45,3 +45,10 @@ jobs:
           image: climate-control:sbom
           format: spdx-json
           output-file: sbom.spdx.json
+
+      - name: Upload SBOM as build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.spdx.json
+          retention-days: 90
