@@ -4,6 +4,8 @@ becomes the fuzzing target later (mentioned in the plan as a stretch goal;
 not built in this pass, but this is the module it would point at).
 """
 
+import yaml
+
 
 class ConfigError(ValueError):
     pass
@@ -37,3 +39,18 @@ def parse_config(raw: dict) -> dict:
         "fan_speed": fan_speed,
         "mode": mode,
     }
+
+
+def load_yaml_overrides(path: str) -> dict:
+    """
+    Load a fleet-config override file (a small YAML doc that lets an
+    operator ship a different default climate config per vehicle trim
+    without rebuilding the image). Uses yaml.safe_load, not yaml.load, so
+    the *code path* here never deserializes arbitrary Python objects --
+    but see docs/security-findings.md: the PyYAML *version* pinned for
+    this feature still matters, independent of how carefully the code
+    calls it.
+    """
+    with open(path) as f:
+        raw = yaml.safe_load(f) or {}
+    return parse_config(raw)

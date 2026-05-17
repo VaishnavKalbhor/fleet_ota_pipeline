@@ -1,0 +1,7 @@
+# Example per-trim override file for the climate-control service.
+# Loaded via config_parser.load_yaml_overrides(path) if the operator
+# points the service at one (not wired into main.py's startup yet --
+# this is the file format the loader expects).
+target_temperature: 19
+fan_speed: 3
+mode: cool
