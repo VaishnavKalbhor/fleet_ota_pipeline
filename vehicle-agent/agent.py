@@ -5,9 +5,15 @@ telemetry back.
 """
 
 
+def _parse_version(version: str) -> tuple[int, ...]:
+    """Parse a dotted version string into a tuple of ints for numeric
+    comparison. "1.10.0" -> (1, 10, 0)."""
+    return tuple(int(part) for part in version.split("."))
+
+
 def needs_update(current_version: str, target_version: str) -> bool:
     """True if the vehicle should update to reach target_version."""
-    return current_version < target_version
+    return _parse_version(current_version) < _parse_version(target_version)
 
 
 class VehicleAgent:

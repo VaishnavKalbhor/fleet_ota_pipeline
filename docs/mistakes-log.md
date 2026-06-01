@@ -94,3 +94,36 @@ and is never followed by an upload/publish step for that file has no way
 for the artifact to leave the runner, regardless of whether the step
 itself succeeds. Caught this by re-reading the workflow the way a
 reviewer would, rather than by running it.
+
+## Mistake 5: Version comparison used string ordering instead of numeric ordering
+
+**Commit that introduced it:** `Add vehicle-agent polling and update logic`
+**Commit that fixed it:** `Fix version comparison: parse version parts as integers, not strings`
+
+`needs_update()` compared version strings directly (`current_version <
+target_version`). That's Python string comparison, which is
+lexicographic/character-by-character -- and dotted version numbers are not
+strings for ordering purposes once any component reaches two digits.
+`"1.10.0" < "1.2.0"` is `True` in plain string comparison (`'1' == '1'`,
+then `'.' == '.'`, then `'1' < '2'`), even though `1.10.0` is the *newer*
+version (minor version 10 vs minor version 2). A vehicle already running
+`1.10.0` would see a manifest targeting `1.2.0` and think it needed to
+"update" -- effectively downgrading itself, or at minimum flip-flopping
+between versions depending on which vehicles polled when.
+
+Wrote the regression test (`test_double_digit_minor_version_is_compared_numerically_not_lexically`)
+*with* the buggy code still in place and watched it fail with the exact
+wrong-direction result (`needs_update("1.10.0", "1.2.0")` returned `True`)
+before writing the fix, so this isn't a hypothetical -- it's a bug that
+was actually observed.
+
+**Fix:** parse each version string into a tuple of ints
+(`"1.10.0" -> (1, 10, 0)`) and compare the tuples, which is Python's
+normal numeric tuple ordering. All 7 vehicle-agent tests pass after the
+fix, including the double-digit regression case.
+
+This is the classic "works fine in every manual test because nobody
+happens to test past version 9" bug -- the kind of thing that looks
+completely correct through versions 1.0 through 1.9 and then silently
+breaks fleet-wide the day a service crosses into double-digit minor or
+patch versions.
