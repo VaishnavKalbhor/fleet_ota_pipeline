@@ -4,6 +4,9 @@ the current manifest, decides whether it needs to update, and reports
 telemetry back.
 """
 
+import json
+import os
+
 
 def _parse_version(version: str) -> tuple[int, ...]:
     """Parse a dotted version string into a tuple of ints for numeric
@@ -38,3 +41,24 @@ class VehicleAgent:
             "current_version": self.current_version,
             "status": self.status,
         }
+
+
+def load_state(state_path: str, vehicle_id: str) -> dict:
+    """Load this vehicle's persisted state (its view of its own current
+    version), or a fresh default if it's never run before."""
+    if not os.path.exists(state_path):
+        return {"vehicle_id": vehicle_id, "current_version": "1.0.0", "status": "healthy"}
+    with open(state_path) as f:
+        return json.load(f)
+
+
+def run_poll_cycle(state_path: str, vehicle_id: str, manifest: dict) -> dict:
+    """One poll-apply-report cycle for a vehicle backed by an on-disk
+    state file (this is what actually runs on a schedule/loop; the
+    VehicleAgent class above is the in-memory building block it's built
+    from)."""
+    state = load_state(state_path, vehicle_id)
+    if needs_update(state["current_version"], manifest["target_version"]):
+        state["current_version"] = manifest["target_version"]
+        state["status"] = "healthy"
+    return state
