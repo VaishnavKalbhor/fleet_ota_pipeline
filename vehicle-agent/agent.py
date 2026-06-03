@@ -52,6 +52,13 @@ def load_state(state_path: str, vehicle_id: str) -> dict:
         return json.load(f)
 
 
+def save_state(state_path: str, state: dict) -> None:
+    """Persist this vehicle's state so the next poll cycle (or a restart)
+    reads back what actually happened, not stale defaults."""
+    with open(state_path, "w") as f:
+        json.dump(state, f)
+
+
 def run_poll_cycle(state_path: str, vehicle_id: str, manifest: dict) -> dict:
     """One poll-apply-report cycle for a vehicle backed by an on-disk
     state file (this is what actually runs on a schedule/loop; the
@@ -61,4 +68,5 @@ def run_poll_cycle(state_path: str, vehicle_id: str, manifest: dict) -> dict:
     if needs_update(state["current_version"], manifest["target_version"]):
         state["current_version"] = manifest["target_version"]
         state["status"] = "healthy"
+    save_state(state_path, state)
     return state

@@ -127,3 +127,39 @@ happens to test past version 9" bug -- the kind of thing that looks
 completely correct through versions 1.0 through 1.9 and then silently
 breaks fleet-wide the day a service crosses into double-digit minor or
 patch versions.
+
+## Mistake 6: Poll cycle computed the update but never saved it, so vehicles "updated" forever without converging
+
+**Commit that introduced it:** `Add persisted on-disk state for vehicle-agent poll cycles`
+**Commit that fixed it:** `Persist state after every poll cycle so updates actually stick`
+
+`run_poll_cycle()` loaded a vehicle's on-disk state, applied the update
+logic to the in-memory `state` dict, and returned it -- but never wrote
+that dict back to `state_path`. Every individual cycle looked completely
+correct in isolation (call it once, the returned dict shows the new
+version) which is exactly why this is an easy one to miss in a quick
+manual check. The regression test in the previous commit calls
+`run_poll_cycle()` five times in a row against the same state file and
+then reads the file back, and the file didn't just show the old version
+-- it didn't exist at all, because nothing ever called `open(..., "w")`.
+
+In a real agent that polls on a timer (or reloads its state after a
+restart, which is the more realistic trigger), this is the "agent
+reinstalls the same update forever" failure mode: every cycle sees stale
+on-disk state, concludes it's still behind, "applies" the update again in
+memory, and throws that result away before the next cycle starts from
+the same stale file. From the fleet's perspective (via telemetry, once
+that's wired to this loop) it would look like a vehicle stuck
+permanently in an "updating" loop that never resolves to "healthy at the
+target version."
+
+**Fix:** added `save_state()` and call it at the end of `run_poll_cycle()`,
+after applying any update, before returning. Re-ran the exact same
+five-cycle test and the persisted file now reads back the target version
+after the first cycle and stays there.
+
+This mistake and the previous one (Mistake 5, version comparison) are
+both in the same file for a reason: they're the two ways a "did this
+vehicle successfully update" check can lie to you -- one by getting the
+comparison direction wrong, the other by never actually recording the
+outcome of a comparison that was correct.
