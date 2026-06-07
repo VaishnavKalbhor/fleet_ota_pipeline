@@ -10,7 +10,7 @@ services:
     build: ./vehicle-agent
     environment:
       VEHICLE_ID: vehicle-01
-      UPDATE_SERVER_URL: http://localhost:8000
+      UPDATE_SERVER_URL: http://update-server:8000
       POLL_INTERVAL_SECONDS: "5"
     depends_on:
       - update-server
@@ -19,7 +19,7 @@ services:
     build: ./vehicle-agent
     environment:
       VEHICLE_ID: vehicle-02
-      UPDATE_SERVER_URL: http://localhost:8000
+      UPDATE_SERVER_URL: http://update-server:8000
       POLL_INTERVAL_SECONDS: "5"
     depends_on:
       - update-server
@@ -28,7 +28,7 @@ services:
     build: ./vehicle-agent
     environment:
       VEHICLE_ID: vehicle-03
-      UPDATE_SERVER_URL: http://localhost:8000
+      UPDATE_SERVER_URL: http://update-server:8000
       POLL_INTERVAL_SECONDS: "5"
     depends_on:
       - update-server
@@ -37,7 +37,7 @@ services:
     build: ./vehicle-agent
     environment:
       VEHICLE_ID: vehicle-04
-      UPDATE_SERVER_URL: http://localhost:8000
+      UPDATE_SERVER_URL: http://update-server:8000
       POLL_INTERVAL_SECONDS: "5"
     depends_on:
       - update-server
@@ -46,7 +46,7 @@ services:
     build: ./vehicle-agent
     environment:
       VEHICLE_ID: vehicle-05
-      UPDATE_SERVER_URL: http://localhost:8000
+      UPDATE_SERVER_URL: http://update-server:8000
       POLL_INTERVAL_SECONDS: "5"
     depends_on:
       - update-server

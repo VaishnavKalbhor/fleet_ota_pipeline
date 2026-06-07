@@ -163,3 +163,43 @@ both in the same file for a reason: they're the two ways a "did this
 vehicle successfully update" check can lie to you -- one by getting the
 comparison direction wrong, the other by never actually recording the
 outcome of a comparison that was correct.
+
+## Mistake 7: Vehicle agents pointed at `localhost` instead of the Compose service name
+
+**Commit that introduced it:** `Add docker-compose fleet simulation: update-server + 5 vehicle agents`
+**Commit that fixed it:** `Point vehicle agents at the update-server Compose service name`
+
+**Note on verification:** this one is different from the others in this
+log. Docker isn't available in the environment this project is being
+built in (no Docker daemon, no `docker compose` binary), so unlike
+Mistakes 1, 2, 3, 5, and 6, I couldn't actually run `docker compose up`
+and watch this fail. What follows is a config mistake I'm confident is
+real because it's a deterministic fact about how Compose's networking
+works, not something I ran and observed -- flagging that distinction
+explicitly rather than implying I tested something I didn't.
+
+Each `vehicle-agent-0N` service was given
+`UPDATE_SERVER_URL: http://localhost:8000`. Inside a container,
+`localhost` / `127.0.0.1` always refers to that container itself, never
+another container on the same Compose network -- Compose gives every
+service its own network namespace and makes services reachable from each
+other by *service name* (Compose sets up a DNS entry per service name
+on the shared network), not via the host's or another container's
+loopback address. So every `vehicle-agent-0N` container would have tried
+to reach an update-server on its own loopback interface, where nothing
+is listening, and every poll would fail with a connection error --
+which `run.py`'s `except httpx.HTTPError` catches and logs, so the
+container would stay "up" and just spin forever printing poll failures
+instead of crashing loudly. That's arguably worse than a crash: a
+quick `docker compose ps` would show five healthy-looking containers
+while none of them are actually doing anything.
+
+**Fix:** changed `UPDATE_SERVER_URL` to `http://update-server:8000` --
+`update-server` is the service name Compose already resolves on the
+shared default network, matching the `update-server` service block at
+the top of `docker-compose.yml`. `run.py`'s own default
+(`http://localhost:8000`) is left as-is on purpose: that default is for
+running the script directly on a dev machine against a locally-running
+update-server, where `localhost` is correct -- the bug was specifically
+in the Compose environment values overriding that default with the same
+(wrong, for that context) value.
