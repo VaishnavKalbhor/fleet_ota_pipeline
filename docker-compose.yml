@@ -1,0 +1,52 @@
+version: "3.9"
+
+services:
+  update-server:
+    build: ./update-server
+    ports:
+      - "8000:8000"
+
+  vehicle-agent-01:
+    build: ./vehicle-agent
+    environment:
+      VEHICLE_ID: vehicle-01
+      UPDATE_SERVER_URL: http://localhost:8000
+      POLL_INTERVAL_SECONDS: "5"
+    depends_on:
+      - update-server
+
+  vehicle-agent-02:
+    build: ./vehicle-agent
+    environment:
+      VEHICLE_ID: vehicle-02
+      UPDATE_SERVER_URL: http://localhost:8000
+      POLL_INTERVAL_SECONDS: "5"
+    depends_on:
+      - update-server
+
+  vehicle-agent-03:
+    build: ./vehicle-agent
+    environment:
+      VEHICLE_ID: vehicle-03
+      UPDATE_SERVER_URL: http://localhost:8000
+      POLL_INTERVAL_SECONDS: "5"
+    depends_on:
+      - update-server
+
+  vehicle-agent-04:
+    build: ./vehicle-agent
+    environment:
+      VEHICLE_ID: vehicle-04
+      UPDATE_SERVER_URL: http://localhost:8000
+      POLL_INTERVAL_SECONDS: "5"
+    depends_on:
+      - update-server
+
+  vehicle-agent-05:
+    build: ./vehicle-agent
+    environment:
+      VEHICLE_ID: vehicle-05
+      UPDATE_SERVER_URL: http://localhost:8000
+      POLL_INTERVAL_SECONDS: "5"
+    depends_on:
+      - update-server
