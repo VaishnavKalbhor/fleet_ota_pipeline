@@ -44,8 +44,12 @@ def needs_update(current_version: str, target_version: str) -> bool:
 
 def plan_rollback(current_version: str, previous_version: str) -> dict | None:
     """Decide what action (if any) is needed to roll a vehicle back to
-    previous_version."""
-    if needs_update(current_version, previous_version):
+    previous_version. Rollback is a deliberate move to a specific
+    (usually older) version, so this must not reuse needs_update()'s
+    forward-only "is target newer" check -- any mismatch between current
+    and the rollback target means an action is needed, regardless of
+    which direction that is."""
+    if _parse_version(current_version) != _parse_version(previous_version):
         return {"action": "apply", "target_version": previous_version}
     return None
 

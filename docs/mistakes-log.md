@@ -203,3 +203,38 @@ running the script directly on a dev machine against a locally-running
 update-server, where `localhost` is correct -- the bug was specifically
 in the Compose environment values overriding that default with the same
 (wrong, for that context) value.
+
+## Mistake 8: Rollback logic reused the forward-only version check, so it could never move backward
+
+**Commit that introduced it:** `Add rollout-controller: staged waves, rollback planning, manifest builder`
+**Commit that fixed it:** `Fix plan_rollback: use inequality, not needs_update, to detect rollback action`
+
+`plan_rollback()` called `needs_update(current_version, previous_version)`
+to decide whether a rollback action was needed. `needs_update()` is
+correct for its actual purpose (deciding whether to *update forward* to a
+newer target) but rollback is the opposite operation: a vehicle on a
+broken new version (say `1.3.0`) needs to move *backward* to a
+previously-known-good version (`1.2.0`). `needs_update("1.3.0", "1.2.0")`
+is `False` -- `1.3.0` is not older than `1.2.0` -- so `plan_rollback`
+returned `None`, meaning "no action needed," for the exact scenario
+rollback exists to handle. The test written alongside this bug
+(`test_rollback_from_broken_new_version_to_older_safe_version_is_triggered`)
+failed with `assert None is not None` before the fix, confirming this
+wasn't just a suspicious-looking line -- it's a rollback path that
+silently does nothing.
+
+This is the single most dangerous bug in the mistakes log so far: every
+other bug here (wave math, error-rate denominator, version comparison)
+makes the system behave *incorrectly*, but this one makes the system's
+own safety mechanism -- the thing that's supposed to fire when
+`should_rollback()` says a wave is unhealthy -- a no-op. `should_rollback`
+correctly detecting danger and `plan_rollback` correctly acting on it are
+two different code paths, and only testing the first one (which is what
+the Week 2 toy experiment did) would have missed this entirely.
+
+**Fix:** `plan_rollback` now compares versions with plain inequality
+(via the same `_parse_version` tuple parsing used elsewhere, so
+`"1.3.0"` and `"1.3"` aren't treated as different by a formatting
+accident) instead of the forward-only `needs_update` check. Any mismatch
+between current and the rollback target is an action, in either
+direction.
