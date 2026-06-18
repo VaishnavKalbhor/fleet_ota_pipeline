@@ -238,3 +238,34 @@ the Week 2 toy experiment did) would have missed this entirely.
 accident) instead of the forward-only `needs_update` check. Any mismatch
 between current and the rollback target is an action, in either
 direction.
+
+## Mistake 9: Rollout manifests referenced the mutable `:latest` image tag
+
+**Commit that introduced it:** `Add rollout-controller: staged waves, rollback planning, manifest builder`
+**Commit that fixed it:** `Pin rollout manifests to the target version's image tag, not :latest`
+
+`build_manifest_for_wave()` always set `"image": "climate-control:latest"`
+regardless of which `target_version` the wave was rolling out. `:latest`
+is a mutable tag -- whatever image was most recently pushed under that
+name -- not a fixed reference to a specific build. For a staged rollout
+that's a real problem, not just a style nitpick: the whole premise of a
+5% canary wave is "test this exact build on a small slice of the fleet
+before trusting it everywhere." If the 5% wave pulls `:latest` and the
+95% wave pulls `:latest` again later, there's no guarantee those two
+pulls resolve to the same image -- someone could push a new build to
+`:latest` in between (a hotfix for something unrelated, a CI re-run,
+anything), and the wide rollout would silently deploy a *different,
+never-canaried* image while the manifest still claims a specific
+`target_version` was validated.
+
+**Fix:** the manifest's `image` field now interpolates `target_version`
+directly (`climate-control:1.3.0`, not `climate-control:latest`), so the
+tag a wave pulls is exactly and only the build that was tested at that
+version. `test_manifest_pins_an_immutable_tag_matching_target_version`
+confirms the manifest's image tag always matches the version it claims
+to be rolling out.
+
+Combined with Mistake 8 (rollback), this week's controller had two ways
+the safety story around "canary something small before trusting it
+everywhere" could quietly fail: rollback that doesn't roll back, and a
+canary that might not even be testing the build that later gets promoted.

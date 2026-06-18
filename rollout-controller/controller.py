@@ -55,8 +55,11 @@ def plan_rollback(current_version: str, previous_version: str) -> dict | None:
 
 
 def build_manifest_for_wave(target_version: str) -> dict:
-    """Build the manifest a wave should be rolled out with."""
+    """Build the manifest a wave should be rolled out with. The image tag
+    is pinned to target_version, not "latest" -- see
+    docs/mistakes-log.md Mistake 9 for why that distinction matters for
+    a staged rollout specifically."""
     return {
         "target_version": target_version,
-        "image": "climate-control:latest",
+        "image": f"climate-control:{target_version}",
     }
