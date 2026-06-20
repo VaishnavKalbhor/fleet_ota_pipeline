@@ -35,3 +35,17 @@ def test_no_rollback_action_when_already_on_previous_version():
 def test_manifest_pins_an_immutable_tag_matching_target_version():
     manifest = build_manifest_for_wave("1.3.0")
     assert manifest["image"] == "climate-control:1.3.0"
+
+
+def test_promotion_blocked_when_security_scan_failed_even_if_canary_healthy():
+    from controller import is_wave_promotion_allowed
+
+    allowed = is_wave_promotion_allowed(canary_healthy=True, security_scan_passed=False)
+    assert allowed is False
+
+
+def test_promotion_allowed_when_canary_healthy_and_scan_passed():
+    from controller import is_wave_promotion_allowed
+
+    allowed = is_wave_promotion_allowed(canary_healthy=True, security_scan_passed=True)
+    assert allowed is True

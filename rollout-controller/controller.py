@@ -63,3 +63,9 @@ def build_manifest_for_wave(target_version: str) -> dict:
         "target_version": target_version,
         "image": f"climate-control:{target_version}",
     }
+
+
+def is_wave_promotion_allowed(canary_healthy: bool, security_scan_passed: bool) -> bool:
+    """Decide whether it's safe to promote from the current wave to the
+    next one (5% -> 25% -> 100%)."""
+    return canary_healthy
