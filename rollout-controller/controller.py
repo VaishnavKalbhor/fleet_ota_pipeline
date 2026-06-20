@@ -67,5 +67,9 @@ def build_manifest_for_wave(target_version: str) -> dict:
 
 def is_wave_promotion_allowed(canary_healthy: bool, security_scan_passed: bool) -> bool:
     """Decide whether it's safe to promote from the current wave to the
-    next one (5% -> 25% -> 100%)."""
-    return canary_healthy
+    next one (5% -> 25% -> 100%). Both gates must pass -- a healthy
+    canary says nothing about whether the image that canary ran also
+    cleared the security pipeline (Trivy/Semgrep/pip-audit from Week 3),
+    and a green canary is not a substitute for a security gate that's
+    supposed to run independently."""
+    return canary_healthy and security_scan_passed

@@ -269,3 +269,35 @@ Combined with Mistake 8 (rollback), this week's controller had two ways
 the safety story around "canary something small before trusting it
 everywhere" could quietly fail: rollback that doesn't roll back, and a
 canary that might not even be testing the build that later gets promoted.
+
+## Mistake 10: Wave promotion gate ignored the security scan result entirely
+
+**Commit that introduced it:** `Add wave promotion gate for staged rollout`
+**Commit that fixed it:** `Require both a healthy canary and a passed security scan to promote a wave`
+
+`is_wave_promotion_allowed()` took both `canary_healthy` and
+`security_scan_passed` as parameters -- which reads, at a glance, like a
+function that checks both -- but the function body only ever returned
+`canary_healthy`. `security_scan_passed` was accepted and silently
+ignored. `test_promotion_blocked_when_security_scan_failed_even_if_canary_healthy`
+called it with a healthy canary and a *failed* scan and got `True` back:
+promotion allowed, gate passed, despite the one input specifically meant
+to block that outcome.
+
+This is the same shape as Week 3's missing-SBOM-upload mistake in one
+sense (a step that looks like it's doing its job because the pipeline
+stays green) but more dangerous, because it's not "the artifact is
+missing," it's "a security failure produces the identical outcome as a
+security pass." Nothing about running this function would ever surface
+the bug unless a test specifically exercised the security-failed case --
+the security-passed path (which is what almost every manual/happy-path
+test would check first) returns the same answer either way the bug
+exists or not.
+
+**Fix:** the function now requires both conditions
+(`canary_healthy and security_scan_passed`). This closes out the
+Week 5 "mistake period": five distinct, real problems this week and
+last (rollback direction, mutable tags, and this gate, plus the two
+already-fixed lessons from Week 2 ported into the real controller
+without regressing them) -- all caught by writing a test for the
+specific case each bug gets wrong, not by general code review.
