@@ -73,3 +73,71 @@ def is_wave_promotion_allowed(canary_healthy: bool, security_scan_passed: bool) 
     and a green canary is not a substitute for a security gate that's
     supposed to run independently."""
     return canary_healthy and security_scan_passed
+
+
+WAVE_PERCENTAGES = [0.05, 0.25, 1.0]
+
+
+def run_staged_rollout(
+    fleet_size: int,
+    target_version: str,
+    previous_version: str,
+    security_scan_passed: bool,
+    telemetry_by_wave: list[list[dict]],
+) -> tuple[list[dict], str]:
+    """
+    Drive a rollout through the 5% / 25% / 100% waves, deciding after
+    each wave whether to promote, roll back, or stop because the
+    security gate blocked it.
+
+    telemetry_by_wave[i] is the telemetry snapshot to evaluate for
+    WAVE_PERCENTAGES[i]. Returns (events, final_status), where
+    final_status is one of "complete", "rolled_back", "blocked".
+    """
+    events: list[dict] = []
+    manifest = build_manifest_for_wave(target_version)
+
+    for i, pct in enumerate(WAVE_PERCENTAGES):
+        size = wave_size(fleet_size, pct)
+        events.append(
+            {
+                "event": "wave_started",
+                "wave_percentage": pct,
+                "vehicle_count": size,
+                "target_version": target_version,
+                "image": manifest["image"],
+            }
+        )
+
+        telemetry = telemetry_by_wave[i]
+        if should_rollback(telemetry):
+            events.append(
+                {
+                    "event": "rollback_triggered",
+                    "wave_percentage": pct,
+                    "reason": "crash_rate_exceeded_threshold",
+                }
+            )
+            action = plan_rollback(target_version, previous_version)
+            events.append(
+                {
+                    "event": "rollback_applied",
+                    "target_version": action["target_version"] if action else previous_version,
+                }
+            )
+            return events, "rolled_back"
+
+        if not is_wave_promotion_allowed(canary_healthy=True, security_scan_passed=security_scan_passed):
+            events.append(
+                {
+                    "event": "promotion_blocked",
+                    "wave_percentage": pct,
+                    "reason": "security_scan_failed",
+                }
+            )
+            return events, "blocked"
+
+        events.append({"event": "wave_promoted", "wave_percentage": pct})
+
+    events.append({"event": "rollout_complete", "target_version": target_version})
+    return events, "complete"
