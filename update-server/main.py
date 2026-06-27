@@ -20,13 +20,15 @@ _manifest = {
 }
 
 _fleet_state: dict[str, dict] = {}
+_events: list[dict] = []
 
 
 def _reset_for_tests() -> None:
     """Test-only helper. Not exposed over HTTP."""
-    global _manifest, _fleet_state
+    global _manifest, _fleet_state, _events
     _manifest = {"target_version": "1.0.0", "image": "climate-control:1.0.0"}
     _fleet_state = {}
+    _events = []
 
 
 @app.get("/health")
@@ -71,3 +73,18 @@ def fleet_status():
         "fleet_size": len(_fleet_state),
         "vehicles": _fleet_state,
     }
+
+
+@app.post("/events")
+def record_event(event: dict):
+    if "event" not in event:
+        raise HTTPException(status_code=422, detail="event is required")
+    stored = dict(event)
+    stored["recorded_at"] = datetime.now(timezone.utc).isoformat()
+    _events.append(stored)
+    return {"received": True}
+
+
+@app.get("/events")
+def list_events():
+    return {"events": _events}

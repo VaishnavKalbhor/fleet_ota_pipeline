@@ -98,3 +98,29 @@ def test_repeated_telemetry_from_same_vehicle_overwrites_not_duplicates():
     body = resp.json()
     assert body["fleet_size"] == 1
     assert body["vehicles"]["vehicle-05"]["current_version"] == "1.2.0"
+
+
+def test_events_can_be_recorded_and_listed():
+    resp = client.post("/events", json={"event": "wave_started", "wave_percentage": 0.05})
+    assert resp.status_code == 200
+
+    resp = client.get("/events")
+    body = resp.json()
+    assert len(body["events"]) == 1
+    assert body["events"][0]["event"] == "wave_started"
+    assert "recorded_at" in body["events"][0]
+
+
+def test_events_require_event_field():
+    resp = client.post("/events", json={"wave_percentage": 0.05})
+    assert resp.status_code == 422
+
+
+def test_events_list_preserves_order():
+    client.post("/events", json={"event": "wave_started"})
+    client.post("/events", json={"event": "wave_promoted"})
+    client.post("/events", json={"event": "rollout_complete"})
+
+    resp = client.get("/events")
+    names = [e["event"] for e in resp.json()["events"]]
+    assert names == ["wave_started", "wave_promoted", "rollout_complete"]
