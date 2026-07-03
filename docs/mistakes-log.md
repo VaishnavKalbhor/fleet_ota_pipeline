@@ -301,3 +301,35 @@ last (rollback direction, mutable tags, and this gate, plus the two
 already-fixed lessons from Week 2 ported into the real controller
 without regressing them) -- all caught by writing a test for the
 specific case each bug gets wrong, not by general code review.
+
+## Mistake 11: Release workflow missing `id-token: write` for cosign keyless signing
+
+**Commit that introduced it:** `Add release workflow: build, push, SBOM, cosign signing`
+**Commit that fixed it:** `Grant id-token: write permission for cosign keyless signing`
+
+**Note on verification:** same caveat as Mistake 7 -- this environment
+has no GitHub Actions runner and no way to actually push to a registry
+or run `cosign`, so this wasn't observed failing in a live run. It's
+included because it's a specific, well-documented requirement of how
+cosign's keyless signing works, not a guess.
+
+`cosign sign --yes` without a static key pair uses Sigstore's keyless
+flow: the workflow needs to mint a short-lived OIDC identity token bound
+to the job (via GitHub's OIDC provider) and present it to Fulcio to get
+a signing certificate. That OIDC token is only issued to a job if the
+workflow explicitly requests it with `permissions: id-token: write` --
+without it, the `id-token` permission defaults to `none` under the
+default (least-privilege) permissions model, and `cosign sign` fails
+outright rather than silently skipping the signature. The original
+`release.yml` set `contents: read` and `packages: write` (both genuinely
+needed -- checkout and pushing to GHCR) but not `id-token: write`, which
+would have made the entire signing step fail on the first real tag push.
+
+Unlike Mistake 7 (a step that "succeeds" but produces nothing useful),
+this one is a hard failure -- the job would show a clear red X on the
+`cosign sign` step. Less dangerous in that sense (nobody ships an
+unsigned image thinking it's signed), but still worth catching before
+the first real release rather than after.
+
+**Fix:** added `id-token: write` to the job's `permissions` block,
+alongside `contents: read` and `packages: write`.
