@@ -1,0 +1,11 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: fleet-ota
+resources:
+  - namespace.yaml
+  - update-server-deployment.yaml
+  - update-server-service.yaml
+  - climate-control-deployment.yaml
+  - climate-control-service.yaml
+  - climate-control-hpa.yaml
+  - network-policy.yaml

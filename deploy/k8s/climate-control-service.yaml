@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: climate-control
+  namespace: fleet-ota
+spec:
+  selector:
+    app: climate-control
+  ports:
+    - port: 8000
+      targetPort: 8000

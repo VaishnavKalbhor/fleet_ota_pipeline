@@ -1,0 +1,53 @@
+# Default-deny plus explicit allows, same pattern used in the earlier
+# AutoSecureOps and AutoGitOps projects: start closed, open only what's
+# needed.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: fleet-ota
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress", "Egress"]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-climate-control-to-update-server
+  namespace: fleet-ota
+spec:
+  podSelector:
+    matchLabels:
+      app: climate-control
+  policyTypes: ["Egress"]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: update-server
+      ports:
+        - protocol: TCP
+          port: 8000
+    - to: []
+      ports:
+        - protocol: UDP
+          port: 53
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-to-update-server
+  namespace: fleet-ota
+spec:
+  podSelector:
+    matchLabels:
+      app: update-server
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: climate-control
+      ports:
+        - protocol: TCP
+          port: 8000
