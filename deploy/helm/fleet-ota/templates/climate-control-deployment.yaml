@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: climate-control
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: climate-control
+spec:
+  replicas: {{ .Values.climateControl.replicas }}
+  selector:
+    matchLabels:
+      app: climate-control
+  template:
+    metadata:
+      labels:
+        app: climate-control
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+        - name: climate-control
+          image: "{{ .Values.climateControl.image.repository }}:{{ .Values.climateControl.image.tag }}"
+          ports:
+            - containerPort: 8000
+          env:
+            - name: APP_VERSION
+              value: {{ .Values.climateControl.appVersion | quote }}
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.climateControl.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]

@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: update-server
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: update-server
+spec:
+  replicas: {{ .Values.updateServer.replicas }}
+  selector:
+    matchLabels:
+      app: update-server
+  template:
+    metadata:
+      labels:
+        app: update-server
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+        - name: update-server
+          image: "{{ .Values.updateServer.image.repository }}:{{ .Values.updateServer.image.tag }}"
+          ports:
+            - containerPort: 8000
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.updateServer.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]

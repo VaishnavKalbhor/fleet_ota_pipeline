@@ -1,0 +1,6 @@
+apiVersion: v2
+name: fleet-ota
+description: Helm chart for the Fleet-OTA update-server and climate-control demo services
+type: application
+version: 0.1.0
+appVersion: "1.0.0"

@@ -1,0 +1,32 @@
+namespace: fleet-ota
+
+updateServer:
+  replicas: 2
+  image:
+    repository: ghcr.io/kalbhor1124/fleet-ota/update-server
+    tag: "1.0.0"
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 250m
+      memory: 128Mi
+
+climateControl:
+  replicas: 2
+  image:
+    repository: ghcr.io/kalbhor1124/fleet-ota/climate-control
+    tag: "1.0.0"
+  appVersion: "1.0.0"
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 250m
+      memory: 128Mi
+  autoscaling:
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 60
