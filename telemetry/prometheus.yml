@@ -1,0 +1,23 @@
+# Illustrative Prometheus scrape config for the climate-control service.
+#
+# Written and syntax-checked (yaml.safe_load) but not run against a real
+# Prometheus server or a real cluster in this dev environment -- static
+# targets below assume a local `docker compose` or `kubectl port-forward`
+# setup, not in-cluster service discovery (a real cluster deployment
+# would use kubernetes_sd_configs against the Service in deploy/k8s
+# instead of a static target list).
+#
+# update-server does NOT expose /metrics yet -- only climate-control was
+# instrumented with prometheus-fastapi-instrumentator (Week 3). Scraping
+# a target that isn't there would just show up as a permanently "down"
+# target, so it's left out rather than added as a placeholder that looks
+# wired up but isn't.
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: climate-control
+    static_configs:
+      - targets: ["climate-control:8000"]
+        labels:
+          service: climate-control
